@@ -1,7 +1,8 @@
 import type { SubtitleProject } from "../models";
 const DB_NAME = "subtitle-meter-db",
   STORE = "projects";
-function openDb(): Promise<IDBDatabase> {
+export { STORE };
+export function openDb(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
     const request = indexedDB.open(DB_NAME, 1);
     request.onupgradeneeded = () =>

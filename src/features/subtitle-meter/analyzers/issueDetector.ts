@@ -1,5 +1,16 @@
+import {
+  READING_LIMIT,
+  readingSpeed,
+  visibleChars,
+} from "../bilingual/languageProfile";
+import type { TrackLanguage } from "../bilingual/models";
 import type { SubtitleCue, SubtitleIssue } from "../models";
-export function detectIssues(cues: SubtitleCue[]): SubtitleIssue[] {
+
+export function detectIssues(
+  cues: SubtitleCue[],
+  language: TrackLanguage = "chinese",
+  idPrefix = "",
+): SubtitleIssue[] {
   const issues: SubtitleIssue[] = [];
   const add = (
     cue: SubtitleCue,
@@ -8,16 +19,17 @@ export function detectIssues(cues: SubtitleCue[]): SubtitleIssue[] {
     message: string,
   ) =>
     issues.push({
-      id: `${cue.id}-${type}-${issues.length}`,
+      id: `${idPrefix}${cue.id}-${type}-${issues.length}`,
       cueId: cue.id,
       type,
       severity,
       message,
     });
   const ordered = [...cues].sort((a, b) => a.startMs - b.startMs);
+  const limit = READING_LIMIT[language];
   ordered.forEach((cue, i) => {
     const duration = cue.endMs - cue.startMs,
-      chars = [...cue.text.replace(/\s/g, "")].length;
+      chars = visibleChars(cue.text);
     if (!cue.text.trim()) add(cue, "empty", "error", "字幕文本为空");
     if (duration <= 0)
       add(cue, "invalid-time", "error", "结束时间必须晚于开始时间");
@@ -29,16 +41,21 @@ export function detectIssues(cues: SubtitleCue[]): SubtitleIssue[] {
           "warning",
           `显示仅 ${(duration / 1000).toFixed(1)} 秒`,
         );
-      const cps = chars / (duration / 1000);
-      if (cps > 18)
-        add(cue, "too-fast", "warning", `阅读速度 ${cps.toFixed(1)} 字/秒`);
+      const speed = readingSpeed(cue, language);
+      if (speed > limit.value)
+        add(
+          cue,
+          "too-fast",
+          "warning",
+          `阅读速度 ${speed.toFixed(1)} ${limit.unit}`,
+        );
     }
     if (chars > 42 || cue.text.split("\n").length > 2)
       add(
         cue,
         "too-long",
         "warning",
-        chars > 42 ? `${chars} 字，建议精简` : "超过两行，画面占用较高",
+        chars > 42 ? `${chars} 字符，建议精简` : "超过两行，画面占用较高",
       );
     const next = ordered[i + 1];
     if (next && next.startMs < cue.endMs)

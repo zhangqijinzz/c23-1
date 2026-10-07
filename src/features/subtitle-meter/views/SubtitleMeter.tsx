@@ -14,7 +14,7 @@ const tabs = [
 ] as const;
 type TabId = (typeof tabs)[number]["id"];
 
-export function SubtitleMeter() {
+export function SubtitleMeter({ onSwitchMode }: { onSwitchMode?: () => void }) {
   const vm = useMemo(createViewModel, []),
     state = useSyncExternalStore(vm.subscribe, vm.getSnapshot);
   const [activeTab, setActiveTab] = useState<TabId>("import");
@@ -55,6 +55,11 @@ export function SubtitleMeter() {
           </span>
         </a>
         <div className="topbar-right">
+          {onSwitchMode && (
+            <button className="mode-switch" onClick={onSwitchMode}>
+              切换到双语项目
+            </button>
+          )}
           <span className="local-pill">
             <i /> 所有处理均在本地
           </span>

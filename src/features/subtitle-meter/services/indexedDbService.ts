@@ -34,12 +34,31 @@ export async function readProject(): Promise<SubtitleProject | null> {
   });
 }
 export async function writeProject(project: SubtitleProject): Promise<void> {
+  return writeRecord("subtitle-meter.current.v1", { ...project });
+}
+
+/** 通用记录读取，供双语项目等独立存储键复用同一个库与对象仓库 */
+export async function readRecord<T>(id: string): Promise<T | null> {
+  const db = await openDb();
+  return new Promise((resolve, reject) => {
+    const request = db.transaction(STORE).objectStore(STORE).get(id);
+    request.onsuccess = () => {
+      resolve((request.result as T) ?? null);
+      db.close();
+    };
+    request.onerror = () => {
+      reject(request.error);
+      db.close();
+    };
+  });
+}
+
+/** 通用记录写入；调用方负责保证 id 字段 */
+export async function writeRecord(id: string, value: object): Promise<void> {
   const db = await openDb();
   return new Promise((resolve, reject) => {
     const transaction = db.transaction(STORE, "readwrite");
-    transaction
-      .objectStore(STORE)
-      .put({ ...project, id: "subtitle-meter.current.v1" });
+    transaction.objectStore(STORE).put({ ...value, id });
     transaction.oncomplete = () => {
       db.close();
       resolve();
